@@ -16,213 +16,229 @@ _Mettre en œuvre une Azure Application Gateway (L7)
 
 _Tester la répartition du trafic HTTP selon différents scénarios
 
-#  Scénario du laboratoire
 
-Mon organisation héberge un site web public.
-Je dois  :
 
-_Répartir la charge HTTP entre plusieurs machines virtuelles
 
-_Fournir des contenus images et vidéos depuis des serveurs distincts
 
-_Implémenter :
+---
 
-~Un équilibreur de charge Azure
 
-~Une passerelle d’application Azure
 
-#  Toutes les ressources seront déployées dans la même région Azure.
+ ## Scénario de laboratoire
 
-# _Architecture cible_
+Votre organisation possède un site web public. Vous devez répartir la charge des requêtes entrantes entre différentes machines virtuelles.  
+Vous devez également fournir des images et des vidéos depuis différentes machines virtuelles.
 
-# 1 réseau virtuel
+Vous prévoyez de déployer :
+- Un **Azure Load Balancer**
+- Une **Azure Application Gateway**
 
-# 3 sous-réseaux
+Toutes les ressources se trouvent dans la même région.
 
-# 3 machines virtuelles
+---
 
-# 1 Azure Load Balancer (public)
+## Compétences professionnelles
 
-# 1 Azure Application Gateway
+- Utiliser un modèle pour provisionner une infrastructure  
+- Configurer un équilibreur de charge Azure  
+- Configurer une passerelle d’application Azure  
 
-🛠️ Nommage utilisé dans ce TP 
-Ressource	Nom
-Groupe de ressources	az104-rg6
-Réseau virtuel	vnet-tp06
-Load Balancer	lb-tp06
-Application Gateway	appgw-tp06
-Machines virtuelles	az104-06-vm0 , az104-06-vm1 , az104-06-vm2 
-#  Tâche 1 – Provisionner l’infrastructure via un modèle ARM
-#  _Objectif_
+---
 
-Déployer automatiquement :
+## Tâche 1 : Utiliser un modèle pour provisionner une infrastructure
 
-_Un VNet
+Dans cette tâche,j'utiliserai un modèle pour déployer :
+- Un réseau virtuel
+- Un groupe de sécurité réseau
+- Trois machines virtuelles
 
-_Un NSG
+### Étapes
 
-_Trois machines virtuelles
+1. Téléchargez les fichiers de laboratoire :  
+   `\Allfiles\Lab06` (modèle et paramètres)
 
-#  Étapes
+2. Connectez-vous au portail Azure :  
+   https://portal.azure.com
 
-1-Télécharger les fichiers du laboratoire :
+3. Recherchez et sélectionnez **Deploy a custom template**
 
-/Allfiles/Lab06
+4. Sélectionnez **Créer votre propre modèle dans l’éditeur**
 
+5. Sélectionnez **Charger le fichier**  
+   - `\Allfiles\Labs\06\az104-06-vms-template.json`
 
-2-Se connecter au portail Azure :
- https://portal.azure.com
+6. Sélectionnez **Enregistrer**
 
-3-Rechercher Deploy a custom template
+7. Sélectionnez **Modifier les paramètres** et chargez :  
+   - `\Allfiles\Labs\06\az104-06-vms-parameters.json`
 
-4-Sélectionner Créer votre propre modèle dans l’éditeur
+8. Sélectionnez **Enregistrer**
 
-Charger le fichier :
+### Paramètres de déploiement
 
-az104-06-vms-template.json
+| Paramètre | Valeur |
+|---------|--------|
+| Abonnement | Votre abonnement Azure |
+| Groupe de ressources | az104-rg6 |
+| Mot de passe | Fournissez un mot de passe sécurisé |
 
+> **Remarque :**  
+> Si la taille de machine virtuelle n'est pas disponible, sélectionnez une référence disponible avec au moins 2 cœurs.
 
-Charger ensuite les paramètres :
+9. Sélectionnez **Révision + créer** puis **Créer**
 
-az104-06-vms-parameters.json
+> **Remarque :**  
+> Le déploiement prend environ 5 minutes.  
+> Vérifiez la présence d’un réseau virtuel avec trois sous-réseaux et une machine virtuelle par sous-réseau.
 
+---
 
-# _Compléter les champs :_
+## Tâche 2 : Configurer un équilibreur de charge Azure
 
-|Paramètre |	Valeur|
-|Abonnement|	Votre abonnement|
-|Groupe de ressources|	az104-rg6
-|Mot de passe	|Mot de passe sécurisé|
+Les équilibreurs de charge Azure assurent la connectivité de couche 4 entre les ressources.
 
-Sélectionner Révision + créer → Créer
+### Schéma d'architecture – Équilibreur de charge
+<img width="1503" height="699" alt="az104-lab06-lb-architecture" src="https://github.com/user-attachments/assets/6946540a-4731-4673-ab76-e316673409f2" />
 
-⏳ Attendre ~5 minutes.
 
-✅ Résultat attendu :
+> L'équilibreur de charge répartit la charge entre deux machines virtuelles du même réseau virtuel.
 
-1 VNet
+### Création de l’équilibreur de charge
 
-3 sous-réseaux
+1. Recherchez **Load balancers**
+2. Sélectionnez **+ Créer**
 
-3 VMs (1 par sous-réseau)
+#### Paramètres principaux
 
-# Tâche 2 – Configurer un Azure Load Balancer
-# _Objectif_
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-lb |
+| Région | Même région que les VM |
+| UGS | Standard |
+| Type | Publique |
+| Étage | Régional |
 
-Répartir le trafic HTTP (port 80) entre deux machines virtuelles.
+---
 
-# 🔹 Création du Load Balancer
+### Configuration IP frontale
 
-|Nom :| lb-tp06|
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-fe |
+| Type d'IP | Adresse IP |
+| Adresse IP publique | Créer |
 
-|Type :| Public|
+#### Adresse IP publique
 
-|SKU :| Standard|
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-lbpip |
+| UGS | Standard |
+| Affectation | Statique |
 
-|Région : |identique aux VMs|
+---
 
-# 🔹 Configuration IP Frontend
+### Pool backend
 
-|*Paramètre*	| *Valeur*
-|Nom	|fe-tp06|
-|IP publique|	pip-lb-tp06|
-|Allocation	|Statique|
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-be |
+| Réseau virtuel | az104-06-vnet1 |
+| Machines virtuelles | az104-06-vm0, az104-06-vm1 |
 
-# 🔹 Pool Backend
+---
 
-|Élément	|Valeur|
-|Nom	|be-tp06|
-|VMs	|az104-06-vm1, az104-06-vm2|
-# 🔹 Règle d’équilibrage
+### Règle d’équilibrage de charge
 
-|Paramètre|	Valeur|
-|Nom	|lbrule-tp06|
-|Protocole|	TCP|
-|Port|	80|
-|Sonde	|TCP / 80|
-|Persistance|	Aucune|
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-lbrule |
+| Protocole | TCP |
+| Port | 80 |
+| Port backend | 80 |
 
-# Test du Load Balancer
+#### Sonde de santé
 
-Copier l’IP publique frontend
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-hp |
+| Protocole | TCP |
+| Port | 80 |
+| Intervalle | 5 |
 
-Ouvrir un navigateur :
+---
 
-http://<ip-publique>
+### Test
 
+- Accédez à l’adresse IP publique
+- Vérifiez l’affichage :
+  - `Hello World from az104-06-vm0`
+  - `Hello World from az104-06-vm1`
 
-Actualiser plusieurs fois
+Actualisez plusieurs fois pour observer l’alternance.
 
-✅ Résultat attendu :
+---
 
-Alternance entre :
+## Tâche 3 : Configurer une passerelle d’application Azure
 
-Hello World from az104-06-vm1
+Azure Application Gateway fournit un équilibrage de charge **couche 7**, le routage basé sur le chemin et la terminaison SSL.
+### Schéma d'architecture – Passerelle d'application
+<img width="1625" height="761" alt="az104-lab06-gw-architecture" src="https://github.com/user-attachments/assets/2fe1dddb-b921-4ca3-a923-be46c3b8a26d" />
 
-Hello World from az104-06-vm2
 
-#  Tâche 3 – Configurer Azure Application Gateway
-# Objectif
+---
 
-Mettre en place un routage HTTP basé sur le chemin :
+### Création du sous-réseau Application Gateway
 
-/image/* → serveur images
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | subnet-appgw |
+| Adresse | 10.60.3.224/27 |
 
-/video/* → serveur vidéos
+---
 
-# 🔹 Création du sous-réseau dédié
+### Création de la passerelle
 
-|Paramètre|	Valeur|
-|Nom	|subnet-appgw|
-|Plage|	10.60.3.224/27|
+| Paramètre | Valeur |
+|---------|--------|
+| Nom | az104-appgw |
+| Étage | Standard V2 |
+| Instances | 2 |
+| Réseau virtuel | az104-06-vnet1 |
+| Sous-réseau | subnet-appgw |
 
-_⚠️ Application Gateway nécessite un sous-réseau dédié (/27 minimum)._
+---
 
-# 🔹 Création de la passerelle
+### Pools backend
 
-|Paramètre|	Valeur|
-|Nom	|appgw-tp06|
-|SKU	|Standard v2|
-|Instances|	2|
-|IP Frontend|	Publique|
+- **az104-appgwbe** → VM1 & VM2  
+- **az104-imagebe** → VM1  
+- **az104-videobe** → VM2  
 
-# 🔹 Pools backend
+---
 
-Pool	Machines
+### Règles de routage basées sur le chemin
 
-be-app	az104-06-vm1, az104-06-vm2
+| Chemin | Backend |
+|------|--------|
+| `/image/*` | az104-imagebe |
+| `/video/*` | az104-videobe |
 
-be-images	az104-06-vm1
+---
 
-be-videos	az104-06-vm2 
+### Tests
 
-# 🔹 Règles de routage par chemin
+- `http://<frontend-ip>/image/`
+- `http://<frontend-ip>/video/`
 
-Chemin	Backend
+---
 
-/image/*	be-images
 
-/video/*	be-videos
+## Points clés à retenir
 
-# Tests Application Gateway
-http://<ip-frontend>/image/
-http://<ip-frontend>/video/
+* Azure Load Balancer fonctionne en **couche 4**
+* Azure Application Gateway fonctionne en **couche 7**
+* L’équilibrage standard est recommandé pour la production
+* Le routage basé sur le chemin permet de diriger le trafic intelligemment
 
-
-# ✅ Résultat attendu :
-
-/image/ → serveur images
-
-/video/ → serveur vidéos
-
-
-
-# ✅ Points clés à retenir
-
-Azure Load Balancer = couche 4 (TCP/UDP)
-
-Application Gateway = couche 7 (HTTP/HTTPS)
-
-Le routage basé sur le chemin est une fonctionnalité L7
-
-Le SKU Standard v2 est recommandé en production
+---
